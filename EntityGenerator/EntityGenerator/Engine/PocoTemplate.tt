@@ -1,0 +1,104 @@
+﻿<#@ template language="C#" hostspecific="True" debug="True" #>
+<#@ output extension=".Generated.cs" #>
+<#@ assembly name="System.Core.dll" #>
+<#@ assembly name="$(SolutionDir)\bin\CodeGenerators.dll" #>
+<#@ import namespace="System.Collections.Generic" #>
+<#@ import namespace="System.Linq" #>
+<#@ import namespace="System.IO" #>
+<#@ import namespace="CodeGenerators.CodeFirst"#>
+<#+
+	void GeneratePocoEntity( string subNamespace, string tableName, string tableAlias, bool makePartialClasses, CodeFirstGenerator generator )
+	{
+
+		string partialModifier = makePartialClasses ? " partial" : string.Empty;
+		var collectionNavigations = generator.GetCollectionNavigationProperties( tableName );
+		var singleNavigationProperties = generator.GetSingleNavigationProperties( tableName );
+		var primitiveProperties = generator.GetPrimitiveProperties( tableName ); 
+
+		var allProperties = new List<IGeneratedProperty>();
+		allProperties.AddRange(collectionNavigations);
+		allProperties.AddRange(singleNavigationProperties);
+		allProperties.AddRange(primitiveProperties);
+
+		bool hasNavigationProperties = allProperties.Any( prop => prop is SingleNavigationProperty || prop is CollectionNavigationProperty );
+
+#>
+using System;
+
+namespace ComputersUnlimited<#= subNamespace #>
+{
+	public<#= partialModifier #> class <#= tableAlias #> 
+	{
+
+		#region <#= tableAlias #> Members
+
+<#+
+		foreach( var property in allProperties.OrderBy( prop => prop.PropertyName ) )
+		{
+			if( property is PrimitiveProperty )
+			{
+				var primitiveProperty = (PrimitiveProperty) property;
+				PocoGeneratePrimitiveProperty( primitiveProperty.PropertyName, primitiveProperty.PropertyType, primitiveProperty.IsPrimaryKey, primitiveProperty.ForeignKeys );
+			}
+			else if( property is CollectionNavigationProperty )
+			{
+				//PocoGenerateCollectionNavigationProperty( property.PropertyName, property.PropertyType );	
+			}
+			else if( property is SingleNavigationProperty )
+			{
+				//PocoGenerateSingleNavigationProperty( property.PropertyName, property.PropertyType );
+			}
+		}	
+#>
+		#endregion <#= tableAlias #> Members
+	}
+}
+<#+
+	}
+	// ***************THIS IS THE END OF THE POCO***************
+#>
+
+<#+
+	void PocoGenerateSingleNavigationProperty( string propertyName, string propertyType )
+	{
+#>
+		public <#= propertyType #> <#= propertyName #> 
+		{
+			get;
+			set;
+		}
+
+<#+
+	}
+#>
+
+<#+
+	void PocoGenerateCollectionNavigationProperty( string propertyName, string collectionType )
+	{
+#>
+		public List<<#= collectionType #>> <#= propertyName #> 
+		{
+			get;
+			set;
+		}
+<#+
+	}
+#>
+<#+
+	void PocoGeneratePrimitiveProperty( string propertyName, string type, bool isKey, IEnumerable<PrimativeForeignKeyFixup> fixups )
+	{
+#>
+		public <#= type #> <#= propertyName #> 
+		{ 
+			get; 
+			set;
+		}
+
+<#+
+	}
+#>
+
+
+
+
+

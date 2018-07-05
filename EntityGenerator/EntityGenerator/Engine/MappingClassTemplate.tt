@@ -1,0 +1,210 @@
+﻿<#@ template language="C#"#>
+<#@ assembly name="System.Core.dll" #>
+<#@ assembly name="$(SolutionDir)\bin\CodeGenerators.dll" #>
+<#@ import namespace="System.Collections.Generic" #>
+<#@ import namespace="System.Linq" #>
+<#@ import namespace="System.IO" #>
+<#@ import namespace="CodeGenerators.CodeFirst"#>
+using System.ComponentModel.DataAnnotations.Schema;
+using System.Data.Entity.ModelConfiguration;
+
+namespace <#= mNamespace #>
+{
+	public class <#= mTableAlias #>Map : EntityTypeConfiguration<<#= mTableAlias #>>
+	{
+		#region Constructors
+
+		public <#= mTableAlias #>Map()
+		{
+			// Primary Key
+<#
+		var primaryKeyColumns = mGenerator.GetPrimaryKeyColumns( mTableName );
+		if ( primaryKeyColumns.Count() == 1 )
+		{
+#>
+			HasKey( model => model.<#= primaryKeyColumns.Single() #> );
+<#
+		}
+		else if( primaryKeyColumns.Count() == 0 )
+		{
+#>
+			//TODO: Generated without primary keys. Please select primary keys.
+			//TODO: Also will need to put [key] attribute on any model properties used here.
+			HasKey( model => model. );
+<#
+		}
+		else
+		{
+#>
+			HasKey( model => new { <#= string.Join(", ", primaryKeyColumns.Select(key => "model." + key)) #> });
+<#
+		}
+#>
+
+			// Properties
+<#
+		var columnMappingInfos = mGenerator.GetColumnMappingInfos( mTableName );
+
+		foreach (var columnMap in columnMappingInfos)
+		{
+			var configLines = new List<string>();
+
+			if(columnMap.IsPrimaryKey)
+			{
+				if (columnMap.IsStorageGenerated) 
+				{
+					configLines.Add(".HasDatabaseGeneratedOption( DatabaseGeneratedOption.Identity )");
+				}
+				else
+				{
+					configLines.Add(".HasDatabaseGeneratedOption( DatabaseGeneratedOption.None )");
+				}	
+			}
+
+			if( columnMap.Type.Contains("decimal") && 
+				columnMap.Precision != null &&
+				columnMap.Scale != null )
+			{
+				configLines.Add(string.Format(".HasPrecision( {0}, {1} )", columnMap.Precision.Value, columnMap.Scale.Value));
+			}
+
+			if (columnMap.Type == "string" || columnMap.Type == "byte[]")
+			{
+				if (!columnMap.IsNullable)
+				{
+					configLines.Add(".IsRequired()");
+				}
+
+				if( columnMap.IsUnicode )
+				{
+					configLines.Add(".IsUnicode()");
+				}
+				else if( columnMap.Type == "string" ) 
+				{
+					configLines.Add(".IsUnicode( false )");
+				}
+
+				if (columnMap.IsFixedLength)
+				{
+					configLines.Add(".IsFixedLength()");
+				}
+
+				if (columnMap.MaxLength != null)
+				{
+					if( columnMap.MaxLength.Value <= 0 )
+					{
+						configLines.Add(".IsMaxLength()");
+					}
+					else
+					{
+						configLines.Add(string.Format(".HasMaxLength( {0} )", columnMap.MaxLength.Value));
+					}
+				}
+				if (columnMap.IsRowVersion)
+				{
+					configLines.Add(".IsFixedLength()");
+					configLines.Add(".HasMaxLength( 8 )");
+					configLines.Add(".IsRowVersion()");
+				}
+			}
+			
+			if(configLines.Any())
+			{
+#>
+			Property( model => model.<#= columnMap.ColumnName #> )
+				<#= string.Join("\r\n				", configLines) #>;
+
+<#
+			}
+		}
+#>
+			// Table & Column Mappings
+			ToTable( "<#= mTableName #>" );
+
+<#
+		foreach (var columnMap in columnMappingInfos)
+		{
+#>			Property( model => model.<#= columnMap.ColumnName #> ).HasColumnName( "<#= columnMap.ColumnName #>" );
+<#
+		}
+
+		// Find m:m relationshipsto configure 
+		var manyManyRelationships = mGenerator.GetManyManyRelationships( mTableName );
+
+		// Find FK relationships that this entity is the dependent of
+		var fkRelationships = mGenerator.GetForeignKeyRelationships(mTableName);
+
+		if(manyManyRelationships.Any() || fkRelationships.Any())
+		{
+#>
+
+			// Relationships
+<#
+			// Many To Many
+			foreach (var navProperty in manyManyRelationships)
+			{
+				var leftColumns = string.Join(", ", navProperty.LeftForeignKeyColumnNames.Select(col => "\"" + col + "\""));
+				var rightColumns = string.Join(", ", navProperty.RightForeignKeyColumnNames.Select(col => "\"" + col + "\""));
+#>
+			HasMany( model => model.<#= navProperty.RightPluralizedTableName #> )
+				.WithMany( reverse => reverse.<#= navProperty.LeftPluralizedTableName #> )
+				.Map( map =>
+				{
+					map.ToTable( "<#= navProperty.ManyToManyTableName #>" );
+					map.MapLeftKey( <#= leftColumns #> );
+					map.MapRightKey( <#= rightColumns #> );
+				} );
+
+<#
+			}
+
+			// One To Many
+			// One To One
+			foreach (var navProperty in fkRelationships)
+			{
+				switch(navProperty.RelationshipType)
+				{
+					case RelationshipType.OneToOneDependent:
+#>
+			HasRequired( model => model.<#= navProperty.ReferenceTableName #> )
+				.WithOptional( reverse => reverse.<#= navProperty.SourceTableName #> );
+<#
+						break;
+					case RelationshipType.OneToMany:
+						if( navProperty.IsForeignKeyOptional )
+						{
+#>
+			HasOptional( model => model.<#= navProperty.ReferenceTableName #> )
+<#
+						}
+						else
+						{
+#>
+			HasRequired( model => model.<#= navProperty.ReferenceTableName #> )
+<#
+						}
+#>				.WithMany( reverse => reverse.<#= navProperty.SourcePluralizedTableName #> )
+<#
+						if(navProperty.SourceForeignKeyColumnNames.Count() == 1)
+						{
+#>				.HasForeignKey( model => model.<#= navProperty.SourceForeignKeyColumnNames.First() #> );
+
+<#
+						}
+						else
+						{
+#>				.HasForeignKey( model => new { <#= string.Join(", ", navProperty.SourceForeignKeyColumnNames.Select(fk => "model." + fk)) #> } );
+
+<#
+						}
+						break;
+				}
+			}
+		}
+#>
+		}
+
+		#endregion Constructors
+
+	}
+}

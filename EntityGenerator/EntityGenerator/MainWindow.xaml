@@ -1,0 +1,22 @@
+﻿<Window x:Class="EntityGenerator.MainWindow"
+	xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+	xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+	xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+	xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+	xmlns:local="clr-namespace:EntityGenerator"
+	xmlns:converters="clr-namespace:EntityGenerator.UI.Converters"
+	mc:Ignorable="d"
+	d:DataContext="{d:DesignInstance local:EntityGeneratorViewModel, IsDesignTimeCreatable=True}"
+	Title="Entity Generator" Height="500" Width="750" Background="#F1F1F1">
+
+	<Window.Resources>
+		<converters:BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter"/>
+	</Window.Resources>
+
+	<Grid>
+		<ContentControl Content="{Binding CurrentView}" Margin="10"/>
+
+		<Rectangle Fill="#33333333" Grid.ColumnSpan="10" Grid.RowSpan="10" Visibility="{Binding IsBusy, Converter={StaticResource BooleanToVisibilityConverter}}"/>
+		<TextBlock Grid.ColumnSpan="10" Grid.RowSpan="10" HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="22" Text="{Binding BusyText}" Foreground="White" Visibility="{Binding IsBusy, Converter={StaticResource BooleanToVisibilityConverter}}"/>
+	</Grid>
+</Window>

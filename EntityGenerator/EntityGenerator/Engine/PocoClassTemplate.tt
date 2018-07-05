@@ -1,0 +1,60 @@
+﻿<#@ template language="C#" #>
+<#@ assembly name="System.Core" #>
+<#@ import namespace="System.Linq" #>
+<#@ import namespace="System.Text" #>
+<#@ import namespace="System.Collections.Generic" #>
+<#@ import namespace="EntityGenerator.Engine" #>
+<#@ assembly name="System.Core.dll" #>
+<#@ assembly name="$(SolutionDir)\bin\CodeGenerators.dll" #>
+<#@ import namespace="System.Collections.Generic" #>
+<#@ import namespace="System.IO" #>
+<#@ import namespace="CodeGenerators.CodeFirst"#>
+using System;
+<#
+		string partialModifier = mMakePartialClasses ? " partial" : string.Empty;
+		var collectionNavigations = mGenerator.GetCollectionNavigationProperties( mTableName );
+		var singleNavigationProperties = mGenerator.GetSingleNavigationProperties( mTableName );
+		var primitiveProperties = mGenerator.GetPrimitiveProperties( mTableName ); 
+
+		var allProperties = new List<IGeneratedProperty>();
+		allProperties.AddRange(collectionNavigations);
+		allProperties.AddRange(singleNavigationProperties);
+		allProperties.AddRange(primitiveProperties);
+
+		bool hasNavigationProperties = allProperties.Any( prop => prop is SingleNavigationProperty || prop is CollectionNavigationProperty );
+
+#>
+
+namespace <#= mNamespace #>
+{
+	public<#= partialModifier #> class <#= mTableAlias #>
+	{
+		#region <#= mTableAlias #> Members
+
+<#
+		foreach( var property in allProperties.OrderBy( prop => prop.PropertyName ) )
+		{
+			if( property is PrimitiveProperty )
+			{
+				var primitiveProperty = (PrimitiveProperty) property;
+
+				PrimitivePropertyTemplate template = new PrimitivePropertyTemplate();
+				
+				Write( template.GenerateProperty( primitiveProperty.PropertyType, primitiveProperty.PropertyName) );
+				Write( Environment.NewLine );
+				Write( Environment.NewLine );
+				//PocoGeneratePrimitiveProperty( primitiveProperty.PropertyName, primitiveProperty.PropertyType, primitiveProperty.IsPrimaryKey, primitiveProperty.ForeignKeys );
+			}
+			else if( property is CollectionNavigationProperty )
+			{
+				//PocoGenerateCollectionNavigationProperty( property.PropertyName, property.PropertyType );	
+			}
+			else if( property is SingleNavigationProperty )
+			{
+				//PocoGenerateSingleNavigationProperty( property.PropertyName, property.PropertyType );
+			}
+		}	
+#>
+		#endregion <#= mTableAlias #> Members
+	}
+}
