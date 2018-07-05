@@ -39,6 +39,10 @@
     </ApplicationIcon>
   </PropertyGroup>
   <ItemGroup>
+    <Reference Include="CodeGenerators, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\..\ProductDependancies\CodeGenerators.dll</HintPath>
+    </Reference>
     <Reference Include="Microsoft.Build" />
     <Reference Include="Microsoft.Practices.Prism">
       <HintPath>..\..\ProductDependancies\Microsoft.Practices.Prism.dll</HintPath>
@@ -211,12 +215,6 @@
   </ItemGroup>
   <ItemGroup>
     <Service Include="{508349B6-6B84-4DF5-91F0-309BEEBAD82D}" />
-  </ItemGroup>
-  <ItemGroup>
-    <ProjectReference Include="..\..\CodeGenerators\CodeGenerators.csproj">
-      <Project>{735e3736-2da8-497d-9d2a-29a1436005b7}</Project>
-      <Name>CodeGenerators</Name>
-    </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
